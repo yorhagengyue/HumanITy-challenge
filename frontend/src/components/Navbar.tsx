@@ -26,7 +26,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import PsychologyIcon from '@mui/icons-material/Psychology';
-import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 const pages = [
   { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },

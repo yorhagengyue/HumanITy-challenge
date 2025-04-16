@@ -1,86 +1,79 @@
-# MyLife Companion
+# MyLife Companion - 前后端分离项目
 
-MyLife Companion is a comprehensive web application designed to support Singaporean youth with mental health challenges, time management, and personal development. The platform integrates calendar/task management, health data monitoring, personalized learning, and AI emotional support in a modular design with data-driven feedback.
+这是一个采用前后端分离架构的综合性Web应用程序，旨在支持青少年的心理健康和个人发展。
 
-## Features Implemented
+## 项目结构
 
-The application currently includes the following key features:
-
-- **Dashboard**: Overview of user's calendar events, tasks, health metrics, and emotional state
-- **Calendar**: Schedule and manage events with detailed views and event creation
-- **Tasks**: Create, track, and complete tasks with filtering and priority management
-- **Health Data**: Monitor sleep, exercise, screen time, and other health metrics
-- **Emotional Support**: AI-powered chat interface for emotional support and resources
-- **Profile**: User profile management with personal information and preferences
-- **Settings**: Application configuration and data management
-
-## Technology Stack
-
-- **Frontend**: React with TypeScript
-- **UI Framework**: Material-UI (MUI)
-- **State Management**: React hooks
-- **Routing**: React Router
-- **Charts**: Chart.js/D3.js (placeholders for now)
-
-## Project Structure
+项目采用前后端分离架构:
 
 ```
 mylife-companion/
-├── public/                # Static files
-├── src/
-│   ├── components/        # Reusable UI components
-│   │   ├── Header.tsx     # Application header
-│   │   └── Sidebar.tsx    # Navigation sidebar
-│   ├── pages/             # Page components
-│   │   ├── Dashboard.tsx  # Main dashboard
-│   │   ├── Calendar.tsx   # Calendar management
-│   │   ├── Tasks.tsx      # Task management
-│   │   ├── HealthData.tsx # Health metrics tracking
-│   │   ├── EmotionalSupport.tsx # AI support chat
-│   │   ├── Profile.tsx    # User profile
-│   │   └── Settings.tsx   # App settings
-│   ├── contexts/          # React contexts
-│   ├── hooks/             # Custom hooks
-│   ├── services/          # API and service integrations
-│   ├── utils/             # Helper functions
-│   ├── types/             # TypeScript type definitions
-│   ├── assets/            # Images and media files
-│   ├── styles/            # Global styles
-│   └── App.tsx            # Main App component
-└── package.json           # Dependencies and scripts
+├── frontend/              # React前端应用
+│   ├── public/            # 静态资源
+│   ├── src/               # 源代码
+│   │   ├── components/    # 可复用组件
+│   │   ├── pages/         # 页面组件
+│   │   ├── contexts/      # React上下文
+│   │   ├── styles/        # 样式文件
+│   │   └── ...
+│   └── package.json       # 前端依赖
+│
+├── backend/               # Node.js后端API
+│   ├── src/
+│   │   ├── config/        # 配置文件
+│   │   ├── controllers/   # 控制器
+│   │   ├── models/        # 数据模型
+│   │   ├── routes/        # 路由
+│   │   ├── middlewares/   # 中间件
+│   │   └── server.js      # 服务器入口
+│   └── package.json       # 后端依赖
+│
+├── database_setup.sql     # 数据库初始化脚本
+└── PROJECT_STATUS.md      # 项目状态和API文档
 ```
 
-## Getting Started
+## 技术栈
 
-### Prerequisites
-- Node.js (v14+)
-- npm or yarn
+### 前端
+- React (TypeScript)
+- Material UI
+- React Router
+- Chart.js
+- Axios
 
-### Installation
+### 后端
+- Node.js
+- Express
+- Sequelize ORM
+- MySQL
+- JWT认证
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/mylife-companion.git
-cd mylife-companion
+## 开发步骤
 
-# Install dependencies
-npm install
+### 后端开发
+1. 进入后端目录：`cd backend`
+2. 安装依赖：`npm install`
+3. 创建环境变量文件：
+   - 复制 `.env.example` 为 `.env`
+   - 根据实际环境修改配置
+4. 在MySQL中执行数据库脚本：`mysql -u root -p < ../database_setup.sql`
+5. 启动开发服务器：`npm run dev`
 
-# Start development server
-npm start
-```
+### 前端开发
+1. 进入前端目录：`cd frontend`
+2. 安装依赖：`npm install`
+3. 启动开发服务器：`npm start`
 
-## Next Steps and Future Improvements
+## 测试应用
 
-1. **Backend Integration**: Implement a backend server to store and retrieve user data
-2. **Authentication**: Add user login and registration functionality
-3. **Data Visualization**: Integrate real charts and graphs for health metrics
-4. **AI Model**: Improve the emotional support AI with a proper NLP model
-5. **Notifications**: Implement push notifications for reminders
-6. **Mobile App**: Develop a mobile application using React Native
-7. **Data Privacy**: Implement robust data encryption and privacy controls
-8. **Collaborative Features**: Add sharing functionality with parents, teachers, or counselors
+### 前端测试
+1. 确保前端依赖已安装：`cd frontend && npm install`
+2. 启动前端测试：`npm test`
 
-## License
+### 后端测试
+1. 确保后端依赖已安装：`cd backend && npm install`
+2. 启动后端测试：`npm test`
 
-[MIT License](LICENSE)
+## API文档
+
+详细的API接口设计和文档请参阅 [PROJECT_STATUS.md](./PROJECT_STATUS.md) 文件。

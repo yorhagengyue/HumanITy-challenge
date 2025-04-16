@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -13,6 +13,9 @@ import {
   IconButton,
   Tab,
   Tabs,
+  Snackbar,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -21,6 +24,19 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SecurityIcon from '@mui/icons-material/Security';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { 
+  getCurrentUserProfile, 
+  updateUserProfile, 
+  uploadProfileImage,
+  getNotificationSettings,
+  updateNotificationSettings,
+  getPrivacySettings,
+  updatePrivacySettings,
+  UserProfile,
+  NotificationSettings,
+  PrivacySettings
+} from '../services/user.service';
+import { getCurrentUser } from '../services/auth.service';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -47,29 +63,68 @@ function TabPanel(props: TabPanelProps) {
 const Profile: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const [userProfile, setUserProfile] = useState({
-    name: 'Sarah Tan',
-    email: 'sarah.tan@example.com',
-    phone: '+65 9123 4567',
-    school: 'Singapore Polytechnic',
-    grade: 'Year 2',
-    bio: 'Student majoring in Computer Science. Passionate about technology and mental health awareness.',
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    id: '',
+    username: '',
+    email: '',
+    full_name: '',
+    avatar: '',
+    role: '',
+    phone: '',
+    school: '',
+    grade: '',
+    bio: '',
   });
 
-  const [notificationSettings, setNotificationSettings] = useState({
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     emailReminders: true,
     taskNotifications: true,
     healthReminders: true,
     emotionalSupportMessages: true,
   });
 
-  const [privacySettings, setPrivacySettings] = useState({
+  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>({
     shareHealthData: false,
     shareEmotionalData: false,
-    allowParentAccess: true,
-    allowSchoolAccess: true,
+    allowParentAccess: false,
+    allowSchoolAccess: false,
   });
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get user profile
+        const profileData = await getCurrentUserProfile();
+        setUserProfile(profileData);
+        
+        // Get notification settings
+        const notificationData = await getNotificationSettings();
+        setNotificationSettings(notificationData);
+        
+        // Get privacy settings
+        const privacyData = await getPrivacySettings();
+        setPrivacySettings(privacyData);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching profile data:', err);
+        setError('Failed to load profile data. Please try again later.');
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -79,9 +134,41 @@ const Profile: React.FC = () => {
     setEditMode(true);
   };
 
-  const handleSave = () => {
-    setEditMode(false);
-    // Here would be API call to save user data
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      
+      // Get current user ID
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        setError('Not authenticated');
+        setSaving(false);
+        return;
+      }
+      
+      // Update profile information
+      await updateUserProfile(currentUser.id, {
+        full_name: userProfile.full_name,
+        phone: userProfile.phone,
+        school: userProfile.school,
+        grade: userProfile.grade,
+        bio: userProfile.bio
+      });
+      
+      // Upload avatar if selected
+      if (selectedFile) {
+        await uploadProfileImage(currentUser.id, selectedFile);
+        setSelectedFile(null);
+      }
+      
+      setMessage('Profile updated successfully');
+      setEditMode(false);
+      setSaving(false);
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      setError('Failed to update profile. Please try again.');
+      setSaving(false);
+    }
   };
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +194,69 @@ const Profile: React.FC = () => {
       [name]: checked,
     });
   };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    try {
+      setSaving(true);
+      await updateNotificationSettings(notificationSettings);
+      setMessage('Notification settings updated successfully');
+      setSaving(false);
+    } catch (err) {
+      console.error('Error saving notification settings:', err);
+      setError('Failed to update notification settings. Please try again.');
+      setSaving(false);
+    }
+  };
+
+  const handleSavePrivacy = async () => {
+    try {
+      setSaving(true);
+      await updatePrivacySettings(privacySettings);
+      setMessage('Privacy settings updated successfully');
+      setSaving(false);
+    } catch (err) {
+      console.error('Error saving privacy settings:', err);
+      setError('Failed to update privacy settings. Please try again.');
+      setSaving(false);
+    }
+  };
+
+  const handleCloseMessage = () => {
+    setMessage('');
+  };
+
+  const handleCloseError = () => {
+    setError('');
+  };
+
+  // Determine avatar URL
+  const avatarUrl = selectedFile 
+    ? URL.createObjectURL(selectedFile)
+    : userProfile.avatar 
+      ? `/static/images/avatar/${userProfile.avatar}` 
+      : '/static/images/avatar/default.jpg';
+
+  if (loading) {
+    return (
+      <Container maxWidth="md">
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="md">
@@ -149,9 +299,10 @@ const Profile: React.FC = () => {
               <IconButton
                 color="primary"
                 onClick={handleSave}
+                disabled={saving}
                 sx={{ position: 'absolute', top: 0, right: 0 }}
               >
-                <SaveIcon />
+                {saving ? <CircularProgress size={24} /> : <SaveIcon />}
               </IconButton>
             )}
 
@@ -166,29 +317,39 @@ const Profile: React.FC = () => {
               <Box sx={{ position: 'relative', mr: { sm: 4 }, mb: { xs: 2, sm: 0 } }}>
                 <Avatar
                   sx={{ width: 120, height: 120, bgcolor: 'primary.main' }}
-                  alt={userProfile.name}
-                  src="/static/images/avatar/default.jpg"
+                  alt={userProfile.full_name}
+                  src={avatarUrl}
                 >
-                  {userProfile.name.charAt(0)}
+                  {userProfile.full_name ? userProfile.full_name.charAt(0) : userProfile.username.charAt(0)}
                 </Avatar>
                 {editMode && (
-                  <IconButton
-                    sx={{
-                      position: 'absolute',
-                      bottom: 0,
-                      right: 0,
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    <PhotoCameraIcon />
-                  </IconButton>
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleFileSelect}
+                    />
+                    <IconButton
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        bgcolor: 'background.paper',
+                      }}
+                      onClick={triggerFileInput}
+                    >
+                      <PhotoCameraIcon />
+                    </IconButton>
+                  </>
                 )}
               </Box>
               <Box>
-                <Typography variant="h5">{userProfile.name}</Typography>
-                <Typography color="text.secondary">{userProfile.school}</Typography>
+                <Typography variant="h5">{userProfile.full_name || userProfile.username}</Typography>
+                <Typography color="text.secondary">{userProfile.school || ''}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {userProfile.grade}
+                  {userProfile.grade || ''}
                 </Typography>
               </Box>
             </Box>
@@ -199,59 +360,58 @@ const Profile: React.FC = () => {
               <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
                 <TextField
                   label="Full Name"
-                  name="name"
-                  value={userProfile.name}
+                  name="full_name"
+                  value={userProfile.full_name || ''}
                   onChange={handleProfileChange}
                   fullWidth
-                  disabled={!editMode}
+                  disabled={!editMode || saving}
                   sx={{ mb: 2 }}
                 />
                 <TextField
                   label="Email"
                   name="email"
-                  value={userProfile.email}
-                  onChange={handleProfileChange}
+                  value={userProfile.email || ''}
                   fullWidth
-                  disabled={!editMode}
+                  disabled={true}  // Email should never be editable here
                   sx={{ mb: 2 }}
                 />
                 <TextField
                   label="Phone"
                   name="phone"
-                  value={userProfile.phone}
+                  value={userProfile.phone || ''}
                   onChange={handleProfileChange}
                   fullWidth
-                  disabled={!editMode}
+                  disabled={!editMode || saving}
                 />
               </Box>
               <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
                 <TextField
                   label="School"
                   name="school"
-                  value={userProfile.school}
+                  value={userProfile.school || ''}
                   onChange={handleProfileChange}
                   fullWidth
-                  disabled={!editMode}
+                  disabled={!editMode || saving}
                   sx={{ mb: 2 }}
                 />
                 <TextField
                   label="Grade/Year"
                   name="grade"
-                  value={userProfile.grade}
+                  value={userProfile.grade || ''}
                   onChange={handleProfileChange}
                   fullWidth
-                  disabled={!editMode}
+                  disabled={!editMode || saving}
                   sx={{ mb: 2 }}
                 />
                 <TextField
                   label="Bio"
                   name="bio"
-                  value={userProfile.bio}
+                  value={userProfile.bio || ''}
                   onChange={handleProfileChange}
                   fullWidth
                   multiline
                   rows={3}
-                  disabled={!editMode}
+                  disabled={!editMode || saving}
                 />
               </Box>
             </Box>
@@ -271,6 +431,7 @@ const Profile: React.FC = () => {
                   onChange={handleNotificationChange}
                   name="emailReminders"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Email reminders for upcoming tasks and events"
@@ -282,6 +443,7 @@ const Profile: React.FC = () => {
                   onChange={handleNotificationChange}
                   name="taskNotifications"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Push notifications for due tasks"
@@ -293,6 +455,7 @@ const Profile: React.FC = () => {
                   onChange={handleNotificationChange}
                   name="healthReminders"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Daily health check-in reminders"
@@ -304,13 +467,21 @@ const Profile: React.FC = () => {
                   onChange={handleNotificationChange}
                   name="emotionalSupportMessages"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Emotional support messages and tips"
             />
           </Box>
           <Box sx={{ mt: 3 }}>
-            <Button variant="contained">Save Changes</Button>
+            <Button 
+              variant="contained" 
+              onClick={handleSaveNotifications}
+              disabled={saving}
+            >
+              {saving ? <CircularProgress size={24} sx={{ mr: 1 }} /> : null}
+              Save Changes
+            </Button>
           </Box>
         </TabPanel>
 
@@ -330,6 +501,7 @@ const Profile: React.FC = () => {
                   onChange={handlePrivacyChange}
                   name="shareHealthData"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Share anonymized health data for research"
@@ -341,6 +513,7 @@ const Profile: React.FC = () => {
                   onChange={handlePrivacyChange}
                   name="shareEmotionalData"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Share anonymized emotional data for research"
@@ -361,6 +534,7 @@ const Profile: React.FC = () => {
                   onChange={handlePrivacyChange}
                   name="allowParentAccess"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Allow limited parent/guardian access"
@@ -372,6 +546,7 @@ const Profile: React.FC = () => {
                   onChange={handlePrivacyChange}
                   name="allowSchoolAccess"
                   color="primary"
+                  disabled={saving}
                 />
               }
               label="Allow limited school counselor access"
@@ -385,10 +560,31 @@ const Profile: React.FC = () => {
             >
               View My Data
             </Button>
-            <Button variant="contained">Save Changes</Button>
+            <Button 
+              variant="contained"
+              onClick={handleSavePrivacy}
+              disabled={saving}
+            >
+              {saving ? <CircularProgress size={24} sx={{ mr: 1 }} /> : null}
+              Save Changes
+            </Button>
           </Box>
         </TabPanel>
       </Paper>
+
+      {/* Success message */}
+      <Snackbar open={!!message} autoHideDuration={6000} onClose={handleCloseMessage}>
+        <Alert onClose={handleCloseMessage} severity="success" sx={{ width: '100%' }}>
+          {message}
+        </Alert>
+      </Snackbar>
+
+      {/* Error message */}
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

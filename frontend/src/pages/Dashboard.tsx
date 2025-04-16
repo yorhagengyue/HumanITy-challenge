@@ -5,7 +5,6 @@ import {
   Typography, 
   Paper, 
   Card, 
-  CardContent,
   Button,
   IconButton,
   Avatar,
@@ -29,7 +28,6 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
-import DevicesIcon from '@mui/icons-material/Devices';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import RefreshIcon from '@mui/icons-material/Refresh';

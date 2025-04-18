@@ -1,5 +1,6 @@
 const db = require('../models');
 const HealthMetric = db.healthMetrics;
+const HealthCalendarEvent = db.healthCalendarEvents; 
 const { Op } = db.Sequelize;
 const User = require('../models/user.model');
 
@@ -101,6 +102,85 @@ exports.create = async (req, res) => {
       notes: notes || ''
     });
     
+    let title = '健康记录';
+    let category = 'other'; // 默认为other
+    
+    // 映射健康类型到允许的类别
+    switch (type) {
+      case 'weight':
+      case 'height':
+      case 'bloodPressure':
+      case 'heartRate':
+      case 'bloodSugar':
+        category = 'measurement'; // 各种测量类型都映射到measurement
+        break;
+      case 'sleep':
+        category = 'other'; // 睡眠记录映射到other
+        break;
+      case 'exercise':
+        category = 'exercise'; // 运动记录直接映射到exercise
+        break;
+      case 'water':
+      case 'diet':
+        category = 'diet'; // 饮食相关记录映射到diet
+        break;
+      case 'medication':
+        category = 'medication'; // 药物记录直接映射到medication
+        break;
+      default:
+        category = 'other'; // 其他类型默认映射到other
+    }
+    
+    // 根据不同健康指标类型设置不同的事件标题
+    switch (type) {
+      case 'weight':
+        title = `体重记录: ${value}${unit || 'kg'}`;
+        break;
+      case 'sleep':
+        title = `睡眠记录: ${value}${unit || '小时'}`;
+        break;
+      case 'exercise':
+        title = `运动记录: ${value}${unit || '分钟'}`;
+        break;
+      case 'water':
+        title = `饮水记录: ${value}${unit || '毫升'}`;
+        break;
+      case 'bloodPressure':
+        title = `血压记录: ${value}${unit || 'mmHg'}`;
+        break;
+      case 'heartRate':
+        title = `心率记录: ${value}${unit || 'bpm'}`;
+        break;
+      default:
+        title = `${type}记录: ${value}${unit || ''}`;
+    }
+    
+    // 创建健康日历事件
+    const now = new Date();
+    const eventEnd = new Date(now.getTime() + 30 * 60000); // 默认事件持续30分钟
+    
+    try {
+      await HealthCalendarEvent.create({
+        user_id: userId,
+        title,
+        description: notes || `${type}记录`,
+        start_time: now,
+        end_time: eventEnd,
+        all_day: false,
+        category: category, // 使用映射后的category值
+        color: '#3788d8',
+        health_metric_id: metric.id,
+        metric_value: value,
+        recurrence_frequency: 'none',
+        recurrence_interval: 1,
+        reminder_type: 'notification'
+      });
+      console.log('健康日历事件创建成功');
+    } catch (calendarErr) {
+      console.error('创建健康日历事件失败:', calendarErr);
+      // 即使日历事件创建失败，也不影响健康指标的保存
+    }
+    
     res.status(201).json({
       message: 'Health metric recorded successfully',
       metric
@@ -129,7 +209,6 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: 'Health metric not found' });
     }
     
-    // Update fields
     const updatedMetric = await metric.update({
       value: value !== undefined ? value : metric.value,
       unit: unit !== undefined ? unit : metric.unit,
@@ -181,8 +260,6 @@ exports.getSummary = async (req, res) => {
     const today = new Date();
     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     
-    // MySQL doesn't have DISTINCT ON, so we need a different approach
-    // Get the latest entry for each type
     const latestMetrics = await HealthMetric.findAll({
       where: {
         user_id: userId,
@@ -193,7 +270,6 @@ exports.getSummary = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
     
-    // Filter to get only the latest entry for each type
     const latestMetricsMap = {};
     latestMetrics.forEach(metric => {
       if (!latestMetricsMap[metric.type] || 
@@ -202,7 +278,6 @@ exports.getSummary = async (req, res) => {
       }
     });
     
-    // Calculate averages for each type
     const averages = await HealthMetric.findAll({
       attributes: [
         'type',
@@ -217,7 +292,6 @@ exports.getSummary = async (req, res) => {
       group: ['type']
     });
     
-    // Prepare summary response
     const summary = {
       latest: Object.values(latestMetricsMap).reduce((acc, metric) => {
         acc[metric.type] = {
@@ -248,7 +322,6 @@ exports.getHealthSummary = async (req, res) => {
   try {
     const userId = req.userId;
     
-    // Get the current date and calculate dates for last 7 days, last 30 days
     const now = new Date();
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(now.getDate() - 7);
@@ -256,7 +329,6 @@ exports.getHealthSummary = async (req, res) => {
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(now.getDate() - 30);
     
-    // Fetch the counts and averages for different metrics in the last 7 days
     const weeklyMetrics = await HealthMetric.aggregate([
       { 
         $match: { 
@@ -274,7 +346,6 @@ exports.getHealthSummary = async (req, res) => {
       }
     ]);
     
-    // Fetch the counts and averages for different metrics in the last 30 days
     const monthlyMetrics = await HealthMetric.aggregate([
       { 
         $match: { 
@@ -292,7 +363,6 @@ exports.getHealthSummary = async (req, res) => {
       }
     ]);
     
-    // Get the most recent entry for each metric type
     const latestMetrics = await HealthMetric.aggregate([
       { 
         $match: { 
@@ -310,7 +380,6 @@ exports.getHealthSummary = async (req, res) => {
       }
     ]);
     
-    // Format the response
     const summary = {
       weekly: weeklyMetrics.reduce((acc, metric) => {
         acc[metric._id] = {
@@ -348,12 +417,10 @@ exports.getHealthSummary = async (req, res) => {
 // Create a new health metric entry
 exports.createHealthMetric = async (req, res) => {
   try {
-    // Validate request
     if (!req.body.type || !req.body.value || !req.body.unit) {
       return res.status(400).json({ message: "Type, value, and unit are required fields." });
     }
 
-    // Create a new health metric
     const healthMetric = new HealthMetric({
       userId: req.userId,
       type: req.body.type,
@@ -363,7 +430,6 @@ exports.createHealthMetric = async (req, res) => {
       notes: req.body.notes || ""
     });
 
-    // Save the health metric in the database
     const savedMetric = await healthMetric.save();
     res.status(201).json(savedMetric);
   } catch (err) {
@@ -376,15 +442,12 @@ exports.getAllHealthMetrics = async (req, res) => {
   try {
     const userId = req.userId;
     
-    // Build query object
     const query = { userId };
     
-    // Apply type filter if provided
     if (req.query.type) {
       query.type = req.query.type;
     }
     
-    // Apply date range filter if provided
     if (req.query.startDate || req.query.endDate) {
       query.date = {};
       
@@ -397,18 +460,15 @@ exports.getAllHealthMetrics = async (req, res) => {
       }
     }
     
-    // Set up pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     
-    // Execute query with pagination
     const healthMetrics = await HealthMetric.find(query)
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit);
     
-    // Get total count for pagination metadata
     const total = await HealthMetric.countDocuments(query);
     
     res.status(200).json({
@@ -431,16 +491,13 @@ exports.getHealthMetricsByType = async (req, res) => {
     const userId = req.userId;
     const type = req.params.type;
     
-    // Validate type parameter
     const validTypes = ['sleep', 'exercise', 'screenTime', 'studyTime', 'water', 'steps', 'weight', 'heartRate', 'mood'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ message: "Invalid metric type." });
     }
     
-    // Build query object
     const query = { userId, type };
     
-    // Apply date range filter if provided
     if (req.query.startDate || req.query.endDate) {
       query.date = {};
       
@@ -453,18 +510,15 @@ exports.getHealthMetricsByType = async (req, res) => {
       }
     }
     
-    // Set up pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     
-    // Execute query with pagination
     const healthMetrics = await HealthMetric.find(query)
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit);
     
-    // Get total count for pagination metadata
     const total = await HealthMetric.countDocuments(query);
     
     res.status(200).json({
@@ -502,7 +556,6 @@ exports.getHealthMetricById = async (req, res) => {
 // Update a health metric
 exports.updateHealthMetric = async (req, res) => {
   try {
-    // Validate request
     if (Object.keys(req.body).length === 0) {
       return res.status(400).json({ message: "Data to update cannot be empty." });
     }
@@ -510,14 +563,12 @@ exports.updateHealthMetric = async (req, res) => {
     const userId = req.userId;
     const id = req.params.id;
 
-    // Find the health metric and ensure it belongs to the user
     const existingMetric = await HealthMetric.findOne({ _id: id, userId });
     
     if (!existingMetric) {
       return res.status(404).json({ message: "Health metric not found." });
     }
     
-    // Update fields
     const updatedMetric = await HealthMetric.findByIdAndUpdate(
       id, 
       req.body, 
@@ -536,7 +587,6 @@ exports.deleteHealthMetric = async (req, res) => {
     const userId = req.userId;
     const id = req.params.id;
 
-    // Find the health metric and ensure it belongs to the user
     const existingMetric = await HealthMetric.findOne({ _id: id, userId });
     
     if (!existingMetric) {
@@ -587,7 +637,6 @@ exports.getMetricsByType = async (req, res) => {
 exports.addMetric = async (req, res) => {
   const { type, value, unit, date, notes } = req.body;
   
-  // Validate request
   if (!type || !value || !unit) {
     return res.status(400).json({ 
       message: "Type, value, and unit are required fields!"
@@ -616,7 +665,6 @@ exports.updateMetric = async (req, res) => {
   const { type, value, unit, date, notes } = req.body;
   
   try {
-    // First check if the metric exists and belongs to the user
     const metric = await HealthMetric.findOne({
       where: { 
         id: id,
@@ -628,7 +676,6 @@ exports.updateMetric = async (req, res) => {
       return res.status(404).json({ message: "Health metric not found!" });
     }
     
-    // Update the metric
     await metric.update({
       type: type || metric.type,
       value: value || metric.value,
@@ -648,7 +695,6 @@ exports.deleteMetric = async (req, res) => {
   const id = req.params.id;
   
   try {
-    // First check if the metric exists and belongs to the user
     const metric = await HealthMetric.findOne({
       where: { 
         id: id,
@@ -660,11 +706,104 @@ exports.deleteMetric = async (req, res) => {
       return res.status(404).json({ message: "Health metric not found!" });
     }
     
-    // Delete the metric
     await metric.destroy();
     
     return res.status(200).json({ message: "Health metric deleted successfully!" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
-}; 
+};
+
+// 获取用户的所有健康日历事件
+exports.getCalendarEvents = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // 查询健康日历事件
+    const events = await HealthCalendarEvent.findAll({
+      where: { user_id: userId },
+      order: [['start_time', 'ASC']]
+    });
+    
+    // 格式化事件为前端期望的格式
+    const formattedEvents = events.map(event => ({
+      id: `health_${event.id}`,
+      user_id: event.user_id,
+      title: event.title,
+      description: event.description, 
+      start_time: event.start_time,
+      end_time: event.end_time,
+      all_day: event.all_day,
+      // 提供一个与普通日历事件兼容的类别结构
+      category: {
+        id: 0,
+        name: event.category,
+        color: event.color || '#3788d8'
+      },
+      health_metric_id: event.health_metric_id,
+      isHealthEvent: true // 标识为健康事件
+    }));
+    
+    res.status(200).json(formattedEvents);
+  } catch (err) {
+    console.error('Error fetching health calendar events:', err);
+    res.status(500).json({ message: 'Failed to fetch health calendar events' });
+  }
+};
+
+// 获取特定月份的健康日历事件
+exports.getMonthCalendarEvents = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { year, month } = req.params;
+    
+    // 验证年月参数
+    if (!year || !month || isNaN(Number(year)) || isNaN(Number(month))) {
+      return res.status(400).json({ message: 'Invalid year or month parameters' });
+    }
+    
+    // 设置月份的开始和结束日期
+    const startDate = new Date(Number(year), Number(month) - 1, 1);
+    const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
+    
+    console.log(`查询健康日历范围: ${startDate.toISOString()} 到 ${endDate.toISOString()}`);
+    
+    // 查询指定月份的健康日历事件
+    const events = await HealthCalendarEvent.findAll({
+      where: {
+        user_id: userId,
+        [Op.or]: [
+          { start_time: { [Op.between]: [startDate, endDate] } },
+          { end_time: { [Op.between]: [startDate, endDate] } }
+        ]
+      },
+      order: [['start_time', 'ASC']]
+    });
+    
+    console.log(`找到 ${events.length} 条健康日历事件`);
+    
+    // 格式化事件为前端期望的格式
+    const formattedEvents = events.map(event => ({
+      id: `health_${event.id}`,
+      user_id: event.user_id,
+      title: event.title,
+      description: event.description,
+      start_time: event.start_time,
+      end_time: event.end_time,
+      all_day: event.all_day,
+      // 提供一个与普通日历事件兼容的类别结构
+      category: {
+        id: 0,
+        name: event.category,
+        color: event.color || '#3788d8'
+      },
+      health_metric_id: event.health_metric_id,
+      isHealthEvent: true // 标识为健康事件
+    }));
+    
+    res.status(200).json(formattedEvents);
+  } catch (err) {
+    console.error('Error fetching month health calendar events:', err);
+    res.status(500).json({ message: 'Failed to fetch month health calendar events' });
+  }
+};

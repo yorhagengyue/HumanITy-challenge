@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import { logout } from '../services/auth.service';
 
 interface HeaderProps {
   handleDrawerToggle: () => void;
@@ -26,6 +27,11 @@ const Header: React.FC<HeaderProps> = ({ handleDrawerToggle }) => {
 
   const handleCloseUserMenu = () => {
     setAnchorElUser(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/login';
   };
 
   return (
@@ -93,7 +99,7 @@ const Header: React.FC<HeaderProps> = ({ handleDrawerToggle }) => {
             <MenuItem onClick={handleCloseUserMenu}>
               <Typography textAlign="center">Settings</Typography>
             </MenuItem>
-            <MenuItem onClick={handleCloseUserMenu}>
+            <MenuItem onClick={handleLogout}>
               <Typography textAlign="center">Logout</Typography>
             </MenuItem>
           </Menu>

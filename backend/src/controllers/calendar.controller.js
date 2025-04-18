@@ -1,5 +1,6 @@
 const db = require('../models');
 const CalendarEvent = db.calendarEvents;
+const HealthCalendarEvent = db.healthCalendarEvents;
 const CalendarCategory = db.calendarCategories;
 const { Op } = db.Sequelize;
 
@@ -7,7 +8,9 @@ const { Op } = db.Sequelize;
 exports.getAllEvents = async (req, res) => {
   try {
     const userId = req.userId;
-    const events = await CalendarEvent.findAll({
+    
+    // 获取普通日历事件
+    const regularEvents = await CalendarEvent.findAll({
       where: { user_id: userId },
       include: [{
         model: CalendarCategory,
@@ -17,7 +20,36 @@ exports.getAllEvents = async (req, res) => {
       order: [['start_time', 'ASC']]
     });
     
-    res.status(200).json(events);
+    // 获取健康日历事件
+    const healthEvents = await HealthCalendarEvent.findAll({
+      where: { user_id: userId },
+      order: [['start_time', 'ASC']]
+    });
+    
+    // 转换健康日历事件格式以匹配普通日历事件
+    const formattedHealthEvents = healthEvents.map(event => {
+      return {
+        id: `health_${event.id}`, // 添加前缀以区分健康事件
+        user_id: event.user_id,
+        title: event.title,
+        description: event.description,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        all_day: event.all_day,
+        category: {
+          id: 0, // 使用默认分类ID
+          name: event.category,
+          color: event.color || '#3788d8'
+        },
+        health_metric_id: event.health_metric_id,
+        isHealthEvent: true // 添加标识符
+      };
+    });
+    
+    // 合并两种事件
+    const allEvents = [...regularEvents, ...formattedHealthEvents];
+    
+    res.status(200).json(allEvents);
   } catch (err) {
     console.error('Error fetching calendar events:', err);
     res.status(500).json({ message: 'Failed to fetch calendar events' });
@@ -35,24 +67,19 @@ exports.getMonthEvents = async (req, res) => {
       return res.status(400).json({ message: 'Invalid year or month parameters' });
     }
     
-    // Set start and end dates for the month
+    // 设置月份的开始和结束日期
     const startDate = new Date(Number(year), Number(month) - 1, 1);
     const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
     
-    const events = await CalendarEvent.findAll({
+    console.log(`查询日期范围: ${startDate.toISOString()} 到 ${endDate.toISOString()}`);
+    
+    // 获取普通日历事件
+    const regularEvents = await CalendarEvent.findAll({
       where: {
         user_id: userId,
         [Op.or]: [
-          {
-            start_time: {
-              [Op.between]: [startDate, endDate]
-            }
-          },
-          {
-            end_time: {
-              [Op.between]: [startDate, endDate]
-            }
-          }
+          { start_time: { [Op.between]: [startDate, endDate] } },
+          { end_time: { [Op.between]: [startDate, endDate] } }
         ]
       },
       include: [{
@@ -63,10 +90,47 @@ exports.getMonthEvents = async (req, res) => {
       order: [['start_time', 'ASC']]
     });
     
-    res.status(200).json(events);
+    // 获取健康日历事件
+    const healthEvents = await HealthCalendarEvent.findAll({
+      where: {
+        user_id: userId,
+        [Op.or]: [
+          { start_time: { [Op.between]: [startDate, endDate] } },
+          { end_time: { [Op.between]: [startDate, endDate] } }
+        ]
+      },
+      order: [['start_time', 'ASC']]
+    });
+    
+    console.log(`找到 ${regularEvents.length} 条普通事件, ${healthEvents.length} 条健康事件`);
+    
+    // 转换健康日历事件格式以匹配普通日历事件
+    const formattedHealthEvents = healthEvents.map(event => {
+      return {
+        id: `health_${event.id}`,
+        user_id: event.user_id,
+        title: event.title,
+        description: event.description,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        all_day: event.all_day,
+        category: {
+          id: 0,
+          name: event.category,
+          color: event.color || '#3788d8'
+        },
+        health_metric_id: event.health_metric_id,
+        isHealthEvent: true
+      };
+    });
+    
+    // 合并两种事件
+    const allEvents = [...regularEvents, ...formattedHealthEvents];
+    
+    res.status(200).json(allEvents);
   } catch (err) {
     console.error('Error fetching month events:', err);
-    res.status(500).json({ message: 'Failed to fetch calendar events for the month' });
+    res.status(500).json({ message: 'Failed to fetch month events' });
   }
 };
 

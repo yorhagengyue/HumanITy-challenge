@@ -176,30 +176,34 @@ export const deleteHealthMetric = async (id: string): Promise<void> => {
 // Get valid health metric types
 export const getHealthMetricTypes = (): string[] => {
   return [
+    'weight',
+    'height',
+    'bloodPressure',
+    'heartRate',
+    'bloodSugar',
     'sleep',
     'exercise',
-    'screenTime',
-    'studyTime',
     'water',
-    'steps',
-    'weight',
-    'heartRate',
-    'mood'
+    'diet',
+    'medication',
+    'other'
   ];
 };
 
 // Get unit for a specific health metric type
 export const getUnitForMetricType = (type: string): string => {
   const unitMap: Record<string, string> = {
+    weight: 'kg',
+    height: 'cm',
+    bloodPressure: 'mmHg',
+    heartRate: 'bpm',
+    bloodSugar: 'mg/dL',
     sleep: 'hours',
     exercise: 'minutes',
-    screenTime: 'hours',
-    studyTime: 'hours',
     water: 'ml',
-    steps: 'count',
-    weight: 'kg',
-    heartRate: 'bpm',
-    mood: 'score'
+    diet: 'calories',
+    medication: 'dose',
+    other: 'unit'
   };
   
   return unitMap[type] || '';

@@ -7,19 +7,14 @@ const dbConfig = require('../config/db.config.js');
 
 // 创建Sequelize实例
 const sequelize = new Sequelize(
-  dbConfig.DB, 
-  dbConfig.USER || '', 
-  dbConfig.PASSWORD || '', 
+  dbConfig.sqlConfig.DB, 
+  dbConfig.sqlConfig.USER || '', 
+  dbConfig.sqlConfig.PASSWORD || '', 
   {
-    host: dbConfig.HOST,
-    dialect: dbConfig.dialect || 'mysql',
-    port: dbConfig.PORT,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    }
+    host: dbConfig.sqlConfig.HOST,
+    dialect: dbConfig.sqlConfig.dialect || 'mysql',
+    port: dbConfig.sqlConfig.PORT,
+    pool: dbConfig.sqlConfig.pool
   }
 );
 
@@ -71,4 +66,15 @@ db.healthCalendarEvents.belongsTo(db.users, { foreignKey: 'user_id' });
 db.healthMetrics.hasMany(db.healthCalendarEvents, { foreignKey: 'health_metric_id' });
 db.healthCalendarEvents.belongsTo(db.healthMetrics, { foreignKey: 'health_metric_id' });
 
-module.exports = db; 
+// 添加日历事件和类别之间的关联关系
+db.calendarCategories.hasMany(db.calendarEvents, { foreignKey: 'category_id', as: 'category' });
+db.calendarEvents.belongsTo(db.calendarCategories, { foreignKey: 'category_id', as: 'category' });
+
+// 用户与日历事件和类别的关联
+db.users.hasMany(db.calendarEvents, { foreignKey: 'user_id' });
+db.calendarEvents.belongsTo(db.users, { foreignKey: 'user_id' });
+
+db.users.hasMany(db.calendarCategories, { foreignKey: 'user_id' });
+db.calendarCategories.belongsTo(db.users, { foreignKey: 'user_id' });
+
+module.exports = db;

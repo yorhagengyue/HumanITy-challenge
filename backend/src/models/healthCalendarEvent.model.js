@@ -84,23 +84,73 @@ module.exports = (sequelize, Sequelize) => {
     }
   }, {
     timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
+    underscored: true,
     indexes: [
       {
-        name: 'user_start_idx',
-        fields: ['user_id', 'start_time']
+        name: 'user_id_idx',
+        fields: ['user_id']
       },
       {
-        name: 'user_category_idx',
-        fields: ['user_id', 'category']
-      },
-      {
-        name: 'metric_idx',
+        name: 'health_metric_id_idx',
         fields: ['health_metric_id']
       }
-    ]
+    ],
+    hooks: {
+      beforeCreate: (event, options) => {
+        // 自动将健康类型映射到允许的类别值
+        event.category = mapCategoryToAllowed(event.category);
+      },
+      beforeBulkCreate: (events, options) => {
+        // 批量创建时的类别映射
+        events.forEach(event => {
+          event.category = mapCategoryToAllowed(event.category);
+        });
+      }
+    }
   });
 
+  // 辅助函数：将任何健康类型映射到允许的日历事件类别
+  function mapCategoryToAllowed(category) {
+    // 默认为other
+    let mappedCategory = 'other';
+    
+    // 健康类型到类别的映射关系
+    switch (category) {
+      case 'weight':
+      case 'height':
+      case 'bloodPressure':
+      case 'heartRate':
+      case 'bloodSugar':
+        mappedCategory = 'measurement'; // 各种测量类型都映射到measurement
+        break;
+      case 'sleep':
+        mappedCategory = 'other'; // 睡眠记录映射到other
+        break;
+      case 'exercise':
+        mappedCategory = 'exercise'; // 运动记录直接映射到exercise
+        break;
+      case 'water':
+      case 'diet':
+        mappedCategory = 'diet'; // 饮食相关记录映射到diet
+        break;
+      case 'medication':
+        mappedCategory = 'medication'; // 药物记录直接映射到medication
+        break;
+      case 'appointment':
+        mappedCategory = 'appointment'; // 约会直接映射到appointment
+        break;
+      default:
+        // 如果已经是允许的值之一，则保持不变
+        const allowedCategories = ['medication', 'appointment', 'exercise', 'diet', 'measurement', 'other'];
+        if (allowedCategories.includes(category)) {
+          mappedCategory = category;
+        } else {
+          mappedCategory = 'other'; // 其他类型默认映射到other
+        }
+    }
+    
+    return mappedCategory;
+  }
+
   return HealthCalendarEvent;
-}; 
+};

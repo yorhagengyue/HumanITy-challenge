@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 // Import SQL database connection
@@ -37,10 +38,20 @@ const startServer = () => {
 require('./routes/auth.routes')(app);
 require('./routes/user.routes')(app);
 require('./routes/task.routes')(app);
-require('./routes/health.routes')(app);
 require('./routes/calendar.routes')(app);
-require('./routes/healthMetric.routes')(app);
-require('./routes/healthCalendar.routes')(app);
+require('./routes/health.routes')(app);
+
+// 添加其他路由
+try {
+  if (fs.existsSync(path.join(__dirname, 'routes/healthCalendar.routes.js'))) {
+    require('./routes/healthCalendar.routes')(app);
+  }
+  if (fs.existsSync(path.join(__dirname, 'routes/healthMetric.routes.js'))) {
+    require('./routes/healthMetric.routes')(app);
+  }
+} catch (err) {
+  console.error('Error loading additional routes:', err);
+}
 
 // TODO: 随着开发进度添加更多路由
 // require('./routes/mood.routes')(app);
@@ -57,7 +68,7 @@ app.use((err, req, res, next) => {
 // Choose whether to sync SQL database before starting based on environment variable
 if (process.env.SYNC_DB === 'true') {
   // Sync SQL database and start server
-  db.sequelize.sync({ force: false }).then(() => {
+  db.sequelize.sync({ force: false }).then(() => { // 改回force:false避免重复删除表
     console.log("SQL database synchronized");
     startServer();
   }).catch(err => {

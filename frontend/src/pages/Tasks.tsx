@@ -41,7 +41,7 @@ import { format } from 'date-fns';
 const Tasks: React.FC = () => {
   const theme = useTheme();
   
-  // 状态
+  // States
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +56,7 @@ const Tasks: React.FC = () => {
     severity: 'success'
   });
   
-  // 新建/编辑任务表单状态
+  // Form states for creating/editing tasks
   const [formValues, setFormValues] = useState<Task>({
     title: '',
     description: '',
@@ -65,7 +65,7 @@ const Tasks: React.FC = () => {
     status: 'pending'
   });
   
-  // 获取任务列表
+  // Fetch task list
   const fetchTasks = async () => {
     setLoading(true);
     try {
@@ -74,23 +74,23 @@ const Tasks: React.FC = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching tasks:', err);
-      setError('获取任务列表失败，请稍后再试。');
+      setError('Failed to fetch task list. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
   
-  // 初始加载
+  // Initial loading
   useEffect(() => {
     fetchTasks();
   }, []);
   
-  // 过滤器变化时重新获取任务
+  // Refetch tasks when filters change
   useEffect(() => {
     fetchTasks();
   }, [filters]);
   
-  // 处理文本输入变化
+  // Handle text input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormValues({
@@ -99,7 +99,7 @@ const Tasks: React.FC = () => {
     });
   };
   
-  // 处理选择框变化（表单）
+  // Handle select field changes (form)
   const handleSelectChange = (e: SelectChangeEvent) => {
     const { name, value } = e.target;
     setFormValues({
@@ -108,7 +108,7 @@ const Tasks: React.FC = () => {
     });
   };
   
-  // 处理过滤器文本输入变化
+  // Handle filter text input changes
   const handleFilterInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFilters({
@@ -117,7 +117,7 @@ const Tasks: React.FC = () => {
     });
   };
   
-  // 处理过滤器选择框变化
+  // Handle filter select changes
   const handleFilterSelectChange = (e: SelectChangeEvent) => {
     const { name, value } = e.target;
     setFilters({
@@ -126,7 +126,7 @@ const Tasks: React.FC = () => {
     });
   };
   
-  // 打开创建任务对话框
+  // Open create task dialog
   const handleOpenCreateDialog = () => {
     setFormValues({
       title: '',
@@ -139,7 +139,7 @@ const Tasks: React.FC = () => {
     setOpenDialog(true);
   };
   
-  // 打开编辑任务对话框
+  // Open edit task dialog
   const handleOpenEditDialog = (task: Task) => {
     setCurrentTask(task);
     setFormValues({
@@ -150,13 +150,13 @@ const Tasks: React.FC = () => {
     setOpenDialog(true);
   };
   
-  // 处理对话框关闭
+  // Handle dialog close
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setCurrentTask(null);
   };
   
-  // 提交表单
+  // Submit form
   const handleSubmit = async () => {
     try {
       if (dialogMode === 'create') {
@@ -186,14 +186,14 @@ const Tasks: React.FC = () => {
     }
   };
   
-  // 删除任务
+  // Delete task
   const handleDeleteTask = async (id: number) => {
-    if (window.confirm('确认删除该任务？')) {
+    if (window.confirm('Are you sure you want to delete this task?')) {
       try {
         await deleteTask(id);
         setSnackbar({
           open: true,
-          message: '任务删除成功！',
+          message: 'Task deleted successfully!',
           severity: 'success'
         });
         fetchTasks(); // 刷新任务列表
@@ -201,21 +201,21 @@ const Tasks: React.FC = () => {
         console.error('Error deleting task:', err);
         setSnackbar({
           open: true,
-          message: '删除任务失败',
+          message: 'Failed to delete task',
           severity: 'error'
         });
       }
     }
   };
   
-  // 更新任务状态
+  // Update task status
   const handleUpdateStatus = async (task: Task, newStatus: 'pending' | 'in_progress' | 'completed' | 'canceled') => {
     if (task.id) {
       try {
         await updateTask(task.id, { status: newStatus });
         setSnackbar({
           open: true,
-          message: '任务状态更新成功！',
+          message: 'Task status updated successfully!',
           severity: 'success'
         });
         fetchTasks(); // 刷新任务列表
@@ -223,44 +223,44 @@ const Tasks: React.FC = () => {
         console.error('Error updating task status:', err);
         setSnackbar({
           open: true,
-          message: '更新任务状态失败',
+          message: 'Failed to update task status',
           severity: 'error'
         });
       }
     }
   };
   
-  // 清除过滤器
+  // Clear filters
   const handleClearFilters = () => {
     setFilters({});
     setOpenFilter(false);
   };
   
-  // 渲染任务状态标签
+  // Render status chip
   const renderStatusChip = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Chip label="待处理" size="small" color="warning" icon={<AlarmIcon />} />;
+        return <Chip label="Pending" size="small" color="warning" icon={<AlarmIcon />} />;
       case 'in_progress':
-        return <Chip label="进行中" size="small" color="info" icon={<InProgressIcon />} />;
+        return <Chip label="In Progress" size="small" color="info" icon={<InProgressIcon />} />;
       case 'completed':
-        return <Chip label="已完成" size="small" color="success" icon={<CheckCircleIcon />} />;
+        return <Chip label="Completed" size="small" color="success" icon={<CheckCircleIcon />} />;
       case 'canceled':
-        return <Chip label="已取消" size="small" color="error" icon={<CancelIcon />} />;
+        return <Chip label="Canceled" size="small" color="error" icon={<CancelIcon />} />;
       default:
         return <Chip label={status} size="small" />;
     }
   };
   
-  // 渲染优先级标签
+  // Render priority chip
   const renderPriorityChip = (priority: string) => {
     switch (priority) {
       case 'high':
-        return <Chip label="高" size="small" sx={{ bgcolor: theme.palette.error.light, color: theme.palette.error.contrastText }} />;
+        return <Chip label="High" size="small" sx={{ bgcolor: theme.palette.error.light, color: theme.palette.error.contrastText }} />;
       case 'medium':
-        return <Chip label="中" size="small" sx={{ bgcolor: theme.palette.warning.light, color: theme.palette.warning.contrastText }} />;
+        return <Chip label="Medium" size="small" sx={{ bgcolor: theme.palette.warning.light, color: theme.palette.warning.contrastText }} />;
       case 'low':
-        return <Chip label="低" size="small" sx={{ bgcolor: theme.palette.success.light, color: theme.palette.success.contrastText }} />;
+        return <Chip label="Low" size="small" sx={{ bgcolor: theme.palette.success.light, color: theme.palette.success.contrastText }} />;
       default:
         return <Chip label={priority} size="small" />;
     }
@@ -270,7 +270,7 @@ const Tasks: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          任务管理
+          Task Management
         </Typography>
         <Box>
           <Button 
@@ -279,7 +279,7 @@ const Tasks: React.FC = () => {
             onClick={() => setOpenFilter(!openFilter)}
             sx={{ mr: 1 }}
           >
-            筛选
+            Filter
           </Button>
           <Button 
             variant="contained" 
@@ -444,17 +444,17 @@ const Tasks: React.FC = () => {
         </Box>
       )}
       
-      {/* 任务表单对话框 */}
+      {/* Task form dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {dialogMode === 'create' ? '创建新任务' : '编辑任务'}
+          {dialogMode === 'create' ? 'Create New Task' : 'Edit Task'}
         </DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
             name="title"
-            label="任务标题"
+            label="Task Title"
             type="text"
             fullWidth
             variant="outlined"
@@ -467,7 +467,7 @@ const Tasks: React.FC = () => {
           <TextField
             margin="dense"
             name="description"
-            label="任务描述"
+            label="Task Description"
             type="text"
             fullWidth
             variant="outlined"
@@ -481,7 +481,7 @@ const Tasks: React.FC = () => {
           <TextField
             margin="dense"
             name="due_date"
-            label="截止日期"
+            label="Due Date"
             type="date"
             fullWidth
             variant="outlined"
@@ -492,45 +492,45 @@ const Tasks: React.FC = () => {
           />
           
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>优先级</InputLabel>
+            <InputLabel>Priority</InputLabel>
             <Select
               name="priority"
               value={formValues.priority || 'medium'}
-              label="优先级"
+              label="Priority"
               onChange={handleSelectChange}
             >
-              <MenuItem value="high">高</MenuItem>
-              <MenuItem value="medium">中</MenuItem>
-              <MenuItem value="low">低</MenuItem>
+              <MenuItem value="high">High</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="low">Low</MenuItem>
             </Select>
           </FormControl>
           
           {dialogMode === 'edit' && (
             <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>状态</InputLabel>
+              <InputLabel>Status</InputLabel>
               <Select
                 name="status"
                 value={formValues.status || 'pending'}
-                label="状态"
+                label="Status"
                 onChange={handleSelectChange}
               >
-                <MenuItem value="pending">待处理</MenuItem>
-                <MenuItem value="in_progress">进行中</MenuItem>
-                <MenuItem value="completed">已完成</MenuItem>
-                <MenuItem value="canceled">已取消</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="in_progress">In Progress</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="canceled">Canceled</MenuItem>
               </Select>
             </FormControl>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>取消</Button>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={!formValues.title}>
-            {dialogMode === 'create' ? '创建' : '保存'}
+            {dialogMode === 'create' ? 'Create' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
       
-      {/* 提示消息 */}
+      {/* Notification messages */}
       <Snackbar 
         open={snackbar.open} 
         autoHideDuration={4000} 

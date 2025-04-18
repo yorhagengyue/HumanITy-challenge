@@ -2,10 +2,10 @@ import { authAxios, getToken, isLoggedIn } from './auth.service';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api/calendar';
-const HEALTH_API_URL = 'http://localhost:8000/api/health-calendar';
+const HEALTH_API_URL = 'http://localhost:8000/api/health';
 
 // Enable offline mode for testing (matching auth.service.ts)
-const OFFLINE_MODE = true;
+const OFFLINE_MODE = false;
 
 // Mock data for offline mode
 const MOCK_EVENTS: CalendarEvent[] = [
@@ -60,7 +60,14 @@ const MOCK_HEALTH_EVENTS: CalendarEvent[] = [
     all_day: false,
     is_health_event: true,
     health_metric_type: "blood_pressure",
-    health_metric_value: 120
+    health_metric_value: 120,
+    color: "#4CAF50",
+    metric_value: 120,
+    recurrence_frequency: "daily",
+    recurrence_interval: 1,
+    recurrence_end_date: new Date().toISOString(),
+    reminder_time: 30,
+    reminder_type: "email"
   },
   {
     id: 102,
@@ -70,7 +77,14 @@ const MOCK_HEALTH_EVENTS: CalendarEvent[] = [
     all_day: false,
     is_health_event: true,
     health_metric_type: "weight",
-    health_metric_value: 70
+    health_metric_value: 70,
+    color: "#4CAF50",
+    metric_value: 70,
+    recurrence_frequency: "weekly",
+    recurrence_interval: 1,
+    recurrence_end_date: new Date().toISOString(),
+    reminder_time: 30,
+    reminder_type: "email"
   }
 ];
 
@@ -116,12 +130,22 @@ export interface CalendarEvent {
     id: number;
     name: string;
     color: string;
-  } | null;
+  } | string | null; 
   user_id?: number;
   reminder?: number | null;
   is_health_event?: boolean;
   health_metric_type?: string;
   health_metric_value?: number;
+  health_metric_id?: number;
+  
+  // 添加健康日历事件特有的字段
+  color?: string;
+  metric_value?: number;
+  recurrence_frequency?: string;
+  recurrence_interval?: number;
+  recurrence_end_date?: string;
+  reminder_time?: number;
+  reminder_type?: string;
 }
 
 // Calendar Category interface
@@ -221,31 +245,30 @@ const deleteEvent = async (id: number) => {
 
 // Get all health events
 const getAllHealthEvents = async () => {
-  console.log('Fetching all health events, offline mode:', OFFLINE_MODE);
-  
   if (OFFLINE_MODE) {
     await mockDelay();
     return { data: MOCK_HEALTH_EVENTS };
   }
   
-  return authAxios.get(`${HEALTH_API_URL}/events`);
+  try {
+    return await authAxios.get(`${HEALTH_API_URL}/calendar/events`);
+  } catch (error) {
+    console.error('Error fetching health events:', error);
+    return { data: [] };
+  }
 };
 
 // Get health events for a specific month
 const getHealthEvents = async (year: number, month: number) => {
-  console.log(`Fetching health events for ${year}/${month}, offline mode:`, OFFLINE_MODE);
-  
-  if (OFFLINE_MODE) {
-    await mockDelay();
-    // Filter health events for the specified month
-    const filteredEvents = MOCK_HEALTH_EVENTS.filter(event => {
-      const eventDate = new Date(event.start_time);
-      return eventDate.getFullYear() === year && eventDate.getMonth() + 1 === month;
-    });
-    return { data: filteredEvents };
+  try {
+    console.log(`调用getHealthEvents: 获取${year}年${month}月的健康事件`);
+    const response = await authAxios.get(`${HEALTH_API_URL}/calendar/events/month/${year}/${month}`);
+    console.log('健康事件API响应:', response);
+    return response;
+  } catch (error) {
+    console.error('获取健康事件出错:', error);
+    return { data: [] };
   }
-  
-  return authAxios.get(`${HEALTH_API_URL}/events/month/${year}/${month}`);
 };
 
 // Get a single health event
@@ -256,7 +279,7 @@ const getHealthEvent = async (id: number) => {
     return { data: event };
   }
   
-  return authAxios.get(`${HEALTH_API_URL}/events/${id}`);
+  return authAxios.get(`${HEALTH_API_URL}/calendar/events/${id}`);
 };
 
 // Create a new health event
@@ -272,7 +295,7 @@ const createHealthEvent = async (event: CalendarEvent) => {
     return { data: newEvent };
   }
   
-  return authAxios.post(`${HEALTH_API_URL}/events`, event);
+  return authAxios.post(`${HEALTH_API_URL}/calendar/events`, event);
 };
 
 // Update a health event
@@ -287,7 +310,7 @@ const updateHealthEvent = async (id: number, event: CalendarEvent) => {
     throw new Error("Health event not found");
   }
   
-  return authAxios.put(`${HEALTH_API_URL}/events/${id}`, event);
+  return authAxios.put(`${HEALTH_API_URL}/calendar/events/${id}`, event);
 };
 
 // Delete a health event
@@ -297,12 +320,12 @@ const deleteHealthEvent = async (id: number) => {
     const index = MOCK_HEALTH_EVENTS.findIndex(e => e.id === id);
     if (index >= 0) {
       MOCK_HEALTH_EVENTS.splice(index, 1);
-      return { data: { message: "Health event deleted successfully" } };
+      return { data: {} };
     }
     throw new Error("Health event not found");
   }
   
-  return authAxios.delete(`${HEALTH_API_URL}/events/${id}`);
+  return authAxios.delete(`${HEALTH_API_URL}/calendar/events/${id}`);
 };
 
 // Get all categories

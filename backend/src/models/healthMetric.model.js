@@ -36,19 +36,9 @@ module.exports = (sequelize, Sequelize) => {
     notes: {
       type: Sequelize.TEXT,
       allowNull: true
-    },
-    created_at: {
-      type: Sequelize.DATE,
-      defaultValue: Sequelize.NOW
-    },
-    updated_at: {
-      type: Sequelize.DATE,
-      defaultValue: Sequelize.NOW
     }
   }, {
     timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
     indexes: [
       {
         name: 'user_type_date_idx',

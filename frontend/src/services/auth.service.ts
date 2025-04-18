@@ -14,7 +14,7 @@ export interface User {
 }
 
 // 添加离线模式的登录选项
-const OFFLINE_MODE = true; // Enable offline mode for testing
+const OFFLINE_MODE = false; // Disable offline mode to use real backend
 
 // 模拟用户数据（仅用于离线模式）
 const MOCK_USERS = [

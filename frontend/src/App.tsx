@@ -98,6 +98,58 @@ const theme = createTheme({
   },
 });
 
+// 添加深色主题定义
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#90caf9',
+      light: '#e3f2fd',
+      dark: '#42a5f5',
+    },
+    secondary: {
+      main: '#f48fb1',
+      light: '#f8bbd0',
+      dark: '#c2185b',
+    },
+    background: {
+      default: '#121212',
+      paper: '#1e1e1e',
+    },
+    text: {
+      primary: '#ffffff',
+      secondary: '#b0b0b0',
+    },
+  },
+  typography: theme.typography,
+  shape: theme.shape,
+  components: {
+    ...theme.components,
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#121212',
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#121212',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          borderRadius: 12,
+        },
+      },
+    },
+  },
+});
+
 // Simple PageLayout component with CSS animations
 const PageLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -148,6 +200,10 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 function App() {
   // Add state to track authentication status
   const [isAuthenticated, setIsAuthenticated] = useState(isLoggedIn());
+  // 添加状态来追踪私密模式
+  const [isPrivateMode, setIsPrivateMode] = useState(() => {
+    return localStorage.getItem('calendar_private_mode') === 'true';
+  });
   
   // Initialize AOS animation library
   useEffect(() => {
@@ -185,12 +241,48 @@ function App() {
     };
   }, []);
 
+  // 添加私密模式监听
+  useEffect(() => {
+    const handlePrivateModeChange = () => {
+      const privateMode = localStorage.getItem('calendar_private_mode') === 'true';
+      setIsPrivateMode(privateMode);
+    };
+    
+    // 监听localStorage变化
+    window.addEventListener('storage', handlePrivateModeChange);
+    
+    // 额外创建自定义事件用于同一窗口通信
+    window.addEventListener('private-mode-change', handlePrivateModeChange);
+    
+    // 创建intervalId每秒检查localStorage中的私密模式状态
+    const intervalId = setInterval(() => {
+      const currentPrivateMode = localStorage.getItem('calendar_private_mode') === 'true';
+      if (currentPrivateMode !== isPrivateMode) {
+        setIsPrivateMode(currentPrivateMode);
+      }
+    }, 1000);
+    
+    // 清理事件监听器
+    return () => {
+      window.removeEventListener('storage', handlePrivateModeChange);
+      window.removeEventListener('private-mode-change', handlePrivateModeChange);
+      clearInterval(intervalId);
+    };
+  }, [isPrivateMode]);
+
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={isPrivateMode ? darkTheme : theme}>
       <CssBaseline />
       <AnimatedBackground />
       <Router>
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          minHeight: '100vh',
+          bgcolor: 'background.default',
+          color: 'text.primary',
+          transition: 'background-color 0.3s ease, color 0.3s ease'
+        }}>
           {/* Use the state variable instead of calling isLoggedIn() directly */}
           {isAuthenticated && <Navbar />}
           <Box 
@@ -201,7 +293,9 @@ function App() {
               flexDirection: 'column',
               position: 'relative',
               zIndex: 1,
-              backgroundColor: 'background.default',
+              bgcolor: 'background.default',
+              color: 'text.primary',
+              transition: 'background-color 0.3s ease, color 0.3s ease'
             }}
           >
             <Routes>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AppBar, 
   Box, 
@@ -12,7 +12,8 @@ import {
   Tooltip, 
   MenuItem,
   useTheme,
-  alpha
+  alpha,
+  Badge
 } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -27,6 +28,12 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import LogoutIcon from '@mui/icons-material/Logout';
+import LockIcon from '@mui/icons-material/Lock';
+import SettingsIcon from '@mui/icons-material/Settings';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import ForumIcon from '@mui/icons-material/Forum';
+import { logout } from '../services/auth.service';
 
 const pages = [
   { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },
@@ -48,7 +55,44 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [isPrivateMode, setIsPrivateMode] = useState(() => {
+    return localStorage.getItem('calendar_private_mode') === 'true';
+  });
+  
+  useEffect(() => {
+    const savedPrivateMode = localStorage.getItem('calendar_private_mode') === 'true';
+    setIsPrivateMode(savedPrivateMode);
+  }, []);
+  
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'calendar_private_mode') {
+        setIsPrivateMode(e.newValue === 'true');
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    const handleCustomEvent = () => {
+      const savedPrivateMode = localStorage.getItem('calendar_private_mode') === 'true';
+      setIsPrivateMode(savedPrivateMode);
+    };
+    
+    window.addEventListener('private-mode-change', handleCustomEvent);
+    
+    const intervalId = setInterval(() => {
+      const currentPrivateMode = localStorage.getItem('calendar_private_mode') === 'true';
+      if (currentPrivateMode !== isPrivateMode) {
+        setIsPrivateMode(currentPrivateMode);
+      }
+    }, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('private-mode-change', handleCustomEvent);
+      clearInterval(intervalId);
+    };
+  }, [isPrivateMode]);
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -67,8 +111,20 @@ const Navbar: React.FC = () => {
   };
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    // This would actually change the theme in a full implementation
+    const newMode = !isPrivateMode;
+    setIsPrivateMode(newMode);
+    localStorage.setItem('calendar_private_mode', newMode.toString());
+    
+    window.dispatchEvent(new CustomEvent('private-mode-change'));
+  };
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/login';
+  };
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
   return (
@@ -77,9 +133,9 @@ const Navbar: React.FC = () => {
       color="default"
       elevation={0}
       sx={{ 
-        backgroundColor: alpha(theme.palette.background.paper, 0.9),
+        backgroundColor: isPrivateMode ? 'rgba(18, 18, 18, 0.95)' : 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(8px)',
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        borderBottom: `1px solid ${isPrivateMode ? theme.palette.divider : 'rgba(0, 0, 0, 0.06)'}`,
       }}
     >
       <Container maxWidth="xl">
@@ -466,14 +522,16 @@ const Navbar: React.FC = () => {
 
           {/* Right side actions */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {/* Dark mode toggle */}
-            <IconButton 
-              onClick={toggleDarkMode}
-              color="inherit"
-              className="hover-rotate"
-            >
-              {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
-            </IconButton>
+            {/* Dark mode toggle - 更新图标 */}
+            <Tooltip title={isPrivateMode ? "Exit Private Mode" : "Enter Private Mode"}>
+              <IconButton 
+                onClick={toggleDarkMode}
+                color="inherit"
+                className="hover-rotate"
+              >
+                {isPrivateMode ? <Brightness7Icon /> : <LockIcon />}
+              </IconButton>
+            </Tooltip>
             
             {/* Notifications */}
             <IconButton 
@@ -481,7 +539,9 @@ const Navbar: React.FC = () => {
               sx={{ ml: 1 }}
               className="hover-scale"
             >
-              <NotificationsIcon />
+              <Badge badgeContent={3} color="error">
+                <NotificationsIcon />
+              </Badge>
             </IconButton>
             
             {/* User menu */}
@@ -524,9 +584,9 @@ const Navbar: React.FC = () => {
                 {settings.map((setting) => (
                   <MenuItem 
                     key={setting.name} 
-                    onClick={handleCloseUserMenu}
-                    component={Link}
-                    to={setting.path}
+                    onClick={setting.name === "Logout" ? handleLogout : handleCloseUserMenu}
+                    component={setting.name === "Logout" ? "button" : Link}
+                    to={setting.path !== "#" ? setting.path : undefined}
                   >
                     <Typography textAlign="center">{setting.name}</Typography>
                   </MenuItem>

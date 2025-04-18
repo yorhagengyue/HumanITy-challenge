@@ -35,6 +35,19 @@ module.exports = function(app) {
     healthController.findOne
   );
 
+  // 添加获取健康日历事件的API
+  app.get(
+    "/api/health/calendar/events",
+    [authJwt.verifyToken],
+    healthController.getCalendarEvents
+  );
+
+  app.get(
+    "/api/health/calendar/events/month/:year/:month",
+    [authJwt.verifyToken],
+    healthController.getMonthCalendarEvents
+  );
+
   // POST route
   app.post(
     "/api/health",
@@ -55,4 +68,4 @@ module.exports = function(app) {
     [authJwt.verifyToken],
     healthController.delete
   );
-}; 
+};

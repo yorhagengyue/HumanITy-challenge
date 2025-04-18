@@ -35,7 +35,8 @@ import {
   PlayCircleFilled as InProgressIcon,
   Alarm as AlarmIcon
 } from '@mui/icons-material';
-import { Task, TaskFilter, getAllTasks, createTask, updateTask, deleteTask } from '../services/task.service';
+import { Task, TaskFilter } from '../services/task.service';
+import { taskData, taskStats } from '../data/TaskData';
 import { format } from 'date-fns';
 
 const Tasks: React.FC = () => {
@@ -65,17 +66,38 @@ const Tasks: React.FC = () => {
     status: 'pending'
   });
   
-  // Fetch task list
-  const fetchTasks = async () => {
+  // Filter and fetch tasks from virtual data
+  const fetchTasks = () => {
     setLoading(true);
     try {
-      const data = await getAllTasks(filters);
-      setTasks(data);
-      setError(null);
+      // Simulate API delay
+      setTimeout(() => {
+        // Apply filters to taskData
+        let filteredTasks = [...taskData];
+        
+        if (filters.status && filters.status !== 'all') {
+          filteredTasks = filteredTasks.filter(task => task.status === filters.status);
+        }
+        
+        if (filters.priority && filters.priority !== 'all') {
+          filteredTasks = filteredTasks.filter(task => task.priority === filters.priority);
+        }
+        
+        if (filters.search) {
+          const searchTerm = filters.search.toLowerCase();
+          filteredTasks = filteredTasks.filter(task => 
+            task.title.toLowerCase().includes(searchTerm) || 
+            (task.description && task.description.toLowerCase().includes(searchTerm))
+          );
+        }
+        
+        setTasks(filteredTasks);
+        setError(null);
+        setLoading(false);
+      }, 300); // Small delay to simulate API call
     } catch (err) {
-      console.error('Error fetching tasks:', err);
-      setError('Failed to fetch task list. Please try again later.');
-    } finally {
+      console.error('Error filtering tasks:', err);
+      setError('Failed to filter tasks. Please try again later.');
       setLoading(false);
     }
   };
@@ -156,47 +178,62 @@ const Tasks: React.FC = () => {
     setCurrentTask(null);
   };
   
-  // Submit form
-  const handleSubmit = async () => {
+  // Submit form - works with virtual data instead of API calls
+  const handleSubmit = () => {
     try {
       if (dialogMode === 'create') {
-        await createTask(formValues);
+        // Create a new task with a unique ID
+        const newTask: Task = {
+          ...formValues,
+          id: Math.max(0, ...tasks.map(t => t.id || 0)) + 1,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        setTasks(prevTasks => [...prevTasks, newTask]);
         setSnackbar({
           open: true,
-          message: '任务创建成功！',
+          message: 'Task created successfully!',
           severity: 'success'
         });
       } else if (dialogMode === 'edit' && currentTask?.id) {
-        await updateTask(currentTask.id, formValues);
+        // Update existing task
+        setTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === currentTask.id 
+              ? { ...task, ...formValues, updated_at: new Date().toISOString() } 
+              : task
+          )
+        );
         setSnackbar({
           open: true,
-          message: '任务更新成功！',
+          message: 'Task updated successfully!',
           severity: 'success'
         });
       }
       handleCloseDialog();
-      fetchTasks(); // 刷新任务列表
     } catch (err) {
       console.error('Error saving task:', err);
       setSnackbar({
         open: true,
-        message: dialogMode === 'create' ? '创建任务失败' : '更新任务失败',
+        message: dialogMode === 'create' ? 'Failed to create task' : 'Failed to update task',
         severity: 'error'
       });
     }
   };
   
-  // Delete task
-  const handleDeleteTask = async (id: number) => {
+  // Delete task - works with virtual data instead of API calls
+  const handleDeleteTask = (id: number) => {
     if (window.confirm('Are you sure you want to delete this task?')) {
       try {
-        await deleteTask(id);
+        // Remove the task from the local state
+        setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
+        
         setSnackbar({
           open: true,
           message: 'Task deleted successfully!',
           severity: 'success'
         });
-        fetchTasks(); // 刷新任务列表
       } catch (err) {
         console.error('Error deleting task:', err);
         setSnackbar({
@@ -208,17 +245,24 @@ const Tasks: React.FC = () => {
     }
   };
   
-  // Update task status
-  const handleUpdateStatus = async (task: Task, newStatus: 'pending' | 'in_progress' | 'completed' | 'canceled') => {
+  // Update task status - works with virtual data instead of API calls
+  const handleUpdateStatus = (task: Task, newStatus: 'pending' | 'in_progress' | 'completed' | 'canceled') => {
     if (task.id) {
       try {
-        await updateTask(task.id, { status: newStatus });
+        // Update the task status in local state
+        setTasks(prevTasks =>
+          prevTasks.map(t =>
+            t.id === task.id
+              ? { ...t, status: newStatus, updated_at: new Date().toISOString() }
+              : t
+          )
+        );
+        
         setSnackbar({
           open: true,
           message: 'Task status updated successfully!',
           severity: 'success'
         });
-        fetchTasks(); // 刷新任务列表
       } catch (err) {
         console.error('Error updating task status:', err);
         setSnackbar({
